@@ -21,7 +21,8 @@ class RecommendedPosts
 
     public function add_meta_box()
     {
-        foreach ($this->post_types as $post_type) {
+        $support_post_types = apply_filters('jankx/editor_recommended_posts/post_types',$this->post_types);
+        foreach ($support_post_types as $post_type) {
             add_meta_box(
                 'jankx_recommended_posts',
                 __('Bài viết đề xuất', 'jankx'),
@@ -69,15 +70,10 @@ class RecommendedPosts
         }
         ?>
         <div class="jankx-recommended-posts-container">
+            <?php wp_nonce_field('jankx_recommended_posts', 'jankx_recommended_posts_nonce'); ?>
             <div class="jankx-recommended-posts-search">
                 <input type="text" id="jankx-post-search" placeholder="<?php esc_attr_e('Tìm kiếm bài viết...', 'jankx'); ?>">
-                <select id="jankx-post-type">
-                    <?php foreach ($this->post_types as $post_type) : ?>
-                        <option value="<?php echo esc_attr($post_type); ?>">
-                            <?php echo esc_html(ucfirst($post_type)); ?>
-                        </option>
-                    <?php endforeach; ?>
-                </select>
+                <input type="hidden" id="jankx-post-type" value="<?php echo esc_attr($post->post_type); ?>">
             </div>
 
             <div class="jankx-recommended-posts-results"></div>
@@ -108,7 +104,7 @@ class RecommendedPosts
                                 <?php if ($price) : ?>
                                     <div class="price"><?php echo $price; ?></div>
                                 <?php endif; ?>
-                                <button class="remove-selected">×</button>
+                                <button type="button" class="remove-selected">×</button>
                             </div>
                             <?php
                         }
@@ -123,21 +119,39 @@ class RecommendedPosts
 
     public function save_meta_box_data($post_id)
     {
-        if (!isset($_POST['jankx_recommended_posts'])) {
+        // Kiểm tra nonce
+        if (!isset($_POST['jankx_recommended_posts_nonce']) ||
+            !wp_verify_nonce($_POST['jankx_recommended_posts_nonce'], 'jankx_recommended_posts')) {
             return;
         }
 
+        // Kiểm tra autosave
         if (defined('DOING_AUTOSAVE') && DOING_AUTOSAVE) {
             return;
         }
 
+        // Kiểm tra quyền
         if (!current_user_can('edit_post', $post_id)) {
             return;
         }
 
+        // Kiểm tra và xử lý dữ liệu
+        if (!isset($_POST['jankx_recommended_posts'])) {
+            delete_post_meta($post_id, $this->meta_key);
+            return;
+        }
+
         $posts = json_decode(stripslashes($_POST['jankx_recommended_posts']), true);
+
         if (is_array($posts)) {
+            // Đảm bảo tất cả các ID là số nguyên
+            $posts = array_map('intval', $posts);
+            // Loại bỏ các ID trùng lặp
+            $posts = array_unique($posts);
+            // Lưu vào post meta
             update_post_meta($post_id, $this->meta_key, $posts);
+        } else {
+            delete_post_meta($post_id, $this->meta_key);
         }
     }
 

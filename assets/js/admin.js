@@ -1,12 +1,11 @@
 jQuery(document).ready(function($) {
     let selectedPosts = new Set();
     let searchTimeout;
-    const $hiddenInput = $('#jankx_recommended_posts');
+    const $hiddenInput = $('input[name="jankx_recommended_posts"]');
 
-    // Load danh sách bài viết đã chọn
-    $('.jankx-selected-post').each(function() {
-        selectedPosts.add($(this).data('post-id'));
-    });
+    // Load danh sách bài viết đã chọn từ input hidden
+    const initialPosts = $hiddenInput.val() ? JSON.parse($hiddenInput.val()) : [];
+    initialPosts.forEach(postId => selectedPosts.add(postId));
 
     // Xử lý tìm kiếm
     $('#jankx-post-search').on('input', function() {
@@ -14,11 +13,13 @@ jQuery(document).ready(function($) {
         searchTimeout = setTimeout(function() {
             searchPosts();
         }, 500);
-    });
-
-    // Xử lý thay đổi loại bài viết
-    $('#jankx-post-type').on('change', function() {
-        searchPosts();
+    }).on('keypress', function(e) {
+        // Xử lý khi nhấn Enter
+        if (e.which === 13) {
+            e.preventDefault();
+            clearTimeout(searchTimeout);
+            searchPosts();
+        }
     });
 
     // Hàm tìm kiếm bài viết
@@ -58,7 +59,7 @@ jQuery(document).ready(function($) {
                     <h4>${post.title}</h4>
                     ${post.price ? `<div class="price">${post.price}</div>` : ''}
                     <div class="actions">
-                        <button class="${isSelected ? 'remove-post' : 'add-post'}">
+                        <button type="button" class="${isSelected ? 'remove-post' : 'add-post'}">
                             ${isSelected ? 'Xóa' : 'Thêm'}
                         </button>
                     </div>
@@ -70,9 +71,10 @@ jQuery(document).ready(function($) {
     }
 
     // Xử lý thêm/xóa bài viết
-    $(document).on('click', '.jankx-post-card .add-post, .jankx-post-card .remove-post', function() {
+    $(document).on('click', '.jankx-post-card .add-post, .jankx-post-card .remove-post', function(e) {
+        e.preventDefault();
         const $card = $(this).closest('.jankx-post-card');
-        const postId = $card.data('post-id');
+        const postId = parseInt($card.data('post-id'));
         const isAdding = $(this).hasClass('add-post');
 
         if (isAdding) {
@@ -89,8 +91,9 @@ jQuery(document).ready(function($) {
     });
 
     // Xử lý xóa bài viết đã chọn
-    $(document).on('click', '.jankx-selected-post .remove-selected', function() {
-        const postId = $(this).closest('.jankx-selected-post').data('post-id');
+    $(document).on('click', '.jankx-selected-post .remove-selected', function(e) {
+        e.preventDefault();
+        const postId = parseInt($(this).closest('.jankx-selected-post').data('post-id'));
         selectedPosts.delete(postId);
         $(this).closest('.jankx-selected-post').remove();
         $(`.jankx-post-card[data-post-id="${postId}"] .remove-post`).text('Thêm').removeClass('remove-post').addClass('add-post');
@@ -99,13 +102,13 @@ jQuery(document).ready(function($) {
 
     // Thêm bài viết vào danh sách đã chọn
     function addSelectedPost($card) {
-        const postId = $card.data('post-id');
+        const postId = parseInt($card.data('post-id'));
         const $selectedPost = $(`
             <div class="jankx-selected-post" data-post-id="${postId}">
                 ${$card.find('img').length ? `<img src="${$card.find('img').attr('src')}" alt="${$card.find('h4').text()}">` : ''}
                 <h4>${$card.find('h4').text()}</h4>
                 ${$card.find('.price').length ? `<div class="price">${$card.find('.price').html()}</div>` : ''}
-                <button class="remove-selected">×</button>
+                <button type="button" class="remove-selected">×</button>
             </div>
         `);
 
@@ -114,6 +117,12 @@ jQuery(document).ready(function($) {
 
     // Cập nhật input ẩn
     function updateHiddenInput() {
-        $hiddenInput.val(JSON.stringify(Array.from(selectedPosts)));
+        const postsArray = Array.from(selectedPosts).map(id => parseInt(id));
+        $hiddenInput.val(JSON.stringify(postsArray));
     }
+
+    // Đảm bảo dữ liệu được lưu khi submit form
+    $('#post').on('submit', function() {
+        updateHiddenInput();
+    });
 });
