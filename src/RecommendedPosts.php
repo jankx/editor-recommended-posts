@@ -2,6 +2,11 @@
 
 namespace Jankx\RecommendedPosts;
 
+use Jankx\PostLayout\Layout\Card;
+use Jankx\PostLayout\PostLayoutManager;
+use Jankx\Adapter\Options\Helper;
+use Jankx\TemplateAndLayout;
+
 class RecommendedPosts
 {
     protected $meta_key = '_jankx_recommended_posts';
@@ -15,13 +20,15 @@ class RecommendedPosts
         add_action('wp_ajax_get_recommended_posts', array($this, 'get_recommended_posts'));
 
         // Hiển thị bài viết đề xuất ở trang chi tiết
-        add_action('woocommerce_after_single_product_summary', array($this, 'display_recommended_posts'), 20);
-        add_action('the_content', array($this, 'display_recommended_posts'));
+        $renderHook = Helper::getOption('recommended_render_hook', 'jankx/template/main_content_sidebar/end');
+        $renderPriority = Helper::getOption('recommended_render_priority', 50);
+
+        add_action($renderHook, array($this, 'display_recommended_posts'), $renderPriority);
     }
 
     public function add_meta_box()
     {
-        $support_post_types = apply_filters('jankx/editor_recommended_posts/post_types',$this->post_types);
+        $support_post_types = apply_filters('jankx/editor_recommended_posts/post_types', $this->post_types);
         foreach ($support_post_types as $post_type) {
             add_meta_box(
                 'jankx_recommended_posts',
@@ -85,7 +92,9 @@ class RecommendedPosts
                     if (!empty($saved_posts)) {
                         foreach ($saved_posts as $post_id) {
                             $post_obj = get_post($post_id);
-                            if (!$post_obj) continue;
+                            if (!$post_obj) {
+                                continue;
+                            }
 
                             $thumbnail = get_the_post_thumbnail_url($post_id, 'thumbnail');
                             $price = '';
@@ -120,8 +129,10 @@ class RecommendedPosts
     public function save_meta_box_data($post_id)
     {
         // Kiểm tra nonce
-        if (!isset($_POST['jankx_recommended_posts_nonce']) ||
-            !wp_verify_nonce($_POST['jankx_recommended_posts_nonce'], 'jankx_recommended_posts')) {
+        if (
+            !isset($_POST['jankx_recommended_posts_nonce']) ||
+            !wp_verify_nonce($_POST['jankx_recommended_posts_nonce'], 'jankx_recommended_posts')
+        ) {
             return;
         }
 
@@ -202,74 +213,67 @@ class RecommendedPosts
         wp_send_json_success($posts);
     }
 
-    public function display_recommended_posts($content = '')
+    public function display_recommended_posts()
     {
         // Chỉ hiển thị ở trang chi tiết sản phẩm hoặc bài viết
         if (!is_single() && !is_product()) {
-            return $content;
+            return;
         }
+        $queried_object = get_queried_object();
+        $post_id = $queried_object->ID;
 
-        $post_id = get_the_ID();
         $saved_posts = get_post_meta($post_id, $this->meta_key, true);
 
         if (empty($saved_posts) || !is_array($saved_posts)) {
-            return $content;
+            return;
         }
-
-        $args = array(
-            'post_type' => array('post', 'product'),
+        $postType = static::getRecommendedPostType($queried_object->post_type);
+        $args = apply_filters("jankx/recommeded/{$postType}/query_args", [
+            'post_type' => $postType,
             'post_status' => 'publish',
             'post__in' => $saved_posts,
             'orderby' => 'post__in',
-        );
+            'posts_per_page' => 8
+        ]);
 
         $query = new \WP_Query($args);
 
         if (!$query->have_posts()) {
-            return $content;
+            return;
         }
+        $recomendedPostLayout = PostLayoutManager::getInstance(
+            TemplateAndLayout::getTemplateEngine()->getId()
+        )->createLayout(
+            apply_filters("jankx/recommended/{$postType}/layout", Card::LAYOUT_NAME, $queried_object, $args),
+            $query,
+            apply_filters("jankx/recommended/{$postType}/layout/content", null)
+        );
 
-        ob_start();
-        ?>
-        <div class="jankx-recommended-posts-display">
-            <h2><?php esc_html_e('Bài viết đề xuất', 'jankx'); ?></h2>
-            <div class="recommended-posts-grid">
-                <?php
-                while ($query->have_posts()) {
-                    $query->the_post();
-                    $post_type = get_post_type();
-                    $thumbnail = get_the_post_thumbnail_url(get_the_ID(), 'medium');
-                    $price = '';
+        $layoutOptions = [
+            'columns' => 4,
+            'show_excerpt' => true,
+            'excerpt_length' => 30
+        ];
+        if ($postType === 'post') {
+            $layoutOptions['post_meta_features'] = [
+                'post_date' => true,
+            ];
+        }
+        $recomendedPostLayout->setOptions(
+            apply_filters("jankx/recommended/{$postType}/layout/options", $layoutOptions)
+        );
+        $content = $recomendedPostLayout->render(false);
 
-                    if ($post_type === 'product') {
-                        $product = wc_get_product(get_the_ID());
-                        if ($product) {
-                            $price = $product->get_price_html();
-                        }
-                    }
-                    ?>
-                    <div class="recommended-post-card">
-                        <?php if ($thumbnail) : ?>
-                            <a href="<?php the_permalink(); ?>" class="post-thumbnail">
-                                <img src="<?php echo esc_url($thumbnail); ?>" alt="<?php the_title_attribute(); ?>">
-                            </a>
-                        <?php endif; ?>
-                        <h3><a href="<?php the_permalink(); ?>"><?php the_title(); ?></a></h3>
-                        <?php if ($price) : ?>
-                            <div class="price"><?php echo $price; ?></div>
-                        <?php endif; ?>
-                    </div>
-                    <?php
-                }
-                ?>
-            </div>
-        </div>
-        <?php
-        wp_reset_postdata();
+        jankx_template(
+            ['recommeded/' . static::getRecommendedPostType($postType), 'recommeded/posts'],
+            [
+            'content' => $content,
+            ]
+        );
+    }
 
-        $recommended_content = ob_get_clean();
-
-        // Thêm nội dung đề xuất vào cuối bài viết
-        return $content . $recommended_content;
+    public static function getRecommendedPostType($postType = 'post')
+    {
+        return apply_filters('jankx/recommeded/' . $postType, $postType);
     }
 }
