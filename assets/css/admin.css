@@ -1,0 +1,129 @@
+.jankx-recommended-posts-container {
+    margin-top: 20px;
+}
+
+.jankx-recommended-posts-search {
+    margin-bottom: 20px;
+    display: flex;
+    gap: 10px;
+}
+
+.jankx-recommended-posts-search input[type="text"] {
+    flex: 1;
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+.jankx-recommended-posts-search select {
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+.jankx-recommended-posts-results {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+.jankx-post-card {
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 15px;
+    background: #fff;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    transition: all 0.3s ease;
+}
+
+.jankx-post-card:hover {
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+
+.jankx-post-card img {
+    width: 100%;
+    height: 150px;
+    object-fit: cover;
+    border-radius: 4px;
+    margin-bottom: 10px;
+}
+
+.jankx-post-card h3 {
+    margin: 0 0 10px;
+    font-size: 16px;
+    line-height: 1.4;
+}
+
+.jankx-post-card .price {
+    color: #e44d26;
+    font-weight: bold;
+    margin: 10px 0;
+}
+
+.jankx-post-card .actions {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 10px;
+}
+
+.jankx-post-card button {
+    padding: 6px 12px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.jankx-post-card .add-post {
+    background: #4CAF50;
+    color: white;
+}
+
+.jankx-post-card .add-post:hover {
+    background: #45a049;
+}
+
+.jankx-post-card .remove-post {
+    background: #f44336;
+    color: white;
+}
+
+.jankx-post-card .remove-post:hover {
+    background: #da190b;
+}
+
+.jankx-selected-posts {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 20px;
+    margin-top: 20px;
+}
+
+.jankx-selected-post {
+    position: relative;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 15px;
+    background: #fff;
+}
+
+.jankx-selected-post .remove-selected {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: #f44336;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    line-height: 24px;
+    text-align: center;
+    cursor: pointer;
+    padding: 0;
+}
+
+.jankx-selected-post .remove-selected:hover {
+    background: #da190b;
+}
