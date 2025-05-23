@@ -62,6 +62,11 @@ jQuery(document).ready(function($) {
         const $results = $('.jankx-recommended-posts-results');
         $results.empty();
 
+        if (posts.length === 0) {
+            $results.html('<div class="no-results">Không tìm thấy bài viết nào phù hợp với từ khóa tìm kiếm.</div>');
+            return;
+        }
+
         posts.forEach(function(post) {
             const isSelected = selectedPosts.has(post.ID);
             const $card = $(`

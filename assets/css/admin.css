@@ -178,3 +178,13 @@
 .jankx-selected-post .remove-selected:hover {
     background: #da190b;
 }
+
+.no-results {
+    text-align: center;
+    padding: 20px;
+    color: #666;
+    font-style: italic;
+    background: #f9f9f9;
+    border-radius: 4px;
+    margin: 10px 0;
+}
