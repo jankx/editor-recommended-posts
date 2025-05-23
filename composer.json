@@ -4,7 +4,10 @@
     "autoload": {
         "psr-4": {
             "Jankx\\RecommendedPosts\\": "src/"
-        }
+        },
+        "files": [
+            "./editor-recommended-posts.php"
+        ]
     },
     "authors": [
         {
