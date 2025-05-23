@@ -6,6 +6,7 @@ use Jankx\PostLayout\Layout\Card;
 use Jankx\PostLayout\PostLayoutManager;
 use Jankx\Adapter\Options\Helper;
 use Jankx\TemplateAndLayout;
+use Jankx\WooCommerce\Renderer\ProductsRenderer;
 
 class RecommendedPosts
 {
@@ -241,10 +242,11 @@ class RecommendedPosts
         if (!$query->have_posts()) {
             return;
         }
+        $layout = apply_filters("jankx/recommended/{$postType}/layout", Card::LAYOUT_NAME, $queried_object, $args);
         $recomendedPostLayout = PostLayoutManager::getInstance(
             TemplateAndLayout::getTemplateEngine()->getId()
         )->createLayout(
-            apply_filters("jankx/recommended/{$postType}/layout", Card::LAYOUT_NAME, $queried_object, $args),
+            $layout,
             $query,
             apply_filters("jankx/recommended/{$postType}/layout/content", null)
         );
@@ -259,15 +261,23 @@ class RecommendedPosts
                 'post_date' => true,
             ];
         }
-        $recomendedPostLayout->setOptions(
-            apply_filters("jankx/recommended/{$postType}/layout/options", $layoutOptions)
-        );
-        $content = $recomendedPostLayout->render(false);
+        $layoutOptions = apply_filters("jankx/recommended/{$postType}/layout/options", $layoutOptions);
+
+        $productsModule = null;
+        if ($postType === 'product') {
+            $productsModule = new ProductsRenderer(array(
+                'layout' => $layout,
+            ));
+            $productsModule->setMainQuery($query);
+            $productsModule->setLayoutOptions($layoutOptions);
+        }
+
+        $recomendedPostLayout->setOptions($layoutOptions);
 
         jankx_template(
             ['recommeded/' . static::getRecommendedPostType($postType), 'recommeded/posts'],
             [
-            'content' => $content,
+                'content' => $productsModule !== null ? $productsModule->render() : $recomendedPostLayout->render(false),
             ]
         );
     }
