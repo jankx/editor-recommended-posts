@@ -264,7 +264,7 @@ class RecommendedPosts
         $layoutOptions = apply_filters("jankx/recommended/{$postType}/layout/options", $layoutOptions);
 
         $productsModule = null;
-        if ($postType === 'product') {
+        if ($postType === 'product' && class_exists(ProductsRenderer::class)) {
             $productsModule = new ProductsRenderer(array(
                 'layout' => $layout,
             ));
