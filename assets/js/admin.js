@@ -2,6 +2,12 @@ jQuery(document).ready(function($) {
     let selectedPosts = new Set();
     let searchTimeout;
     const $hiddenInput = $('input[name="jankx_recommended_posts"]');
+    const $searchContainer = $('.jankx-recommended-posts-search');
+    const $results = $('.jankx-recommended-posts-results');
+
+    // Thêm loading spinner vào container tìm kiếm
+    $searchContainer.append('<div class="loading"></div>');
+    const $loading = $searchContainer.find('.loading');
 
     // Load danh sách bài viết đã chọn từ input hidden
     const initialPosts = $hiddenInput.val() ? JSON.parse($hiddenInput.val()) : [];
@@ -10,6 +16,7 @@ jQuery(document).ready(function($) {
     // Xử lý tìm kiếm
     $('#jankx-post-search').on('input', function() {
         clearTimeout(searchTimeout);
+        $results.addClass('loading').empty();
         searchTimeout = setTimeout(function() {
             searchPosts();
         }, 500);
@@ -18,6 +25,7 @@ jQuery(document).ready(function($) {
         if (e.which === 13) {
             e.preventDefault();
             clearTimeout(searchTimeout);
+            $results.addClass('loading').empty();
             searchPosts();
         }
     });
@@ -42,6 +50,9 @@ jQuery(document).ready(function($) {
                 if (response.success) {
                     displaySearchResults(response.data);
                 }
+            },
+            complete: function() {
+                $results.removeClass('loading');
             }
         });
     }
