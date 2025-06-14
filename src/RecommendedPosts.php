@@ -3,7 +3,7 @@
 namespace Jankx\RecommendedPosts;
 
 if (!defined('ABSPATH')) {
-    exit('Cheatin huh?');
+    exit('Cheating huh?');
 }
 
 use Jankx\PostLayout\Layout\Card;
