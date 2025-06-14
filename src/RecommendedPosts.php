@@ -2,6 +2,10 @@
 
 namespace Jankx\RecommendedPosts;
 
+if (!defined('ABSPATH')) {
+    exit('Cheatin huh?');
+}
+
 use Jankx\PostLayout\Layout\Card;
 use Jankx\PostLayout\PostLayoutManager;
 use Jankx\Adapter\Options\Helper;
