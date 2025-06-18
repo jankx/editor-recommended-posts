@@ -17,6 +17,8 @@ class RecommendedPosts
     protected $meta_key = '_jankx_recommended_posts';
     protected $post_types = array('post', 'product');
 
+    protected $appliedPostType = null;
+
     public function __construct()
     {
         add_action('add_meta_boxes', array($this, 'add_meta_box'));
@@ -35,9 +37,14 @@ class RecommendedPosts
     {
         $support_post_types = apply_filters('jankx/editor_recommended_posts/post_types', $this->post_types);
         foreach ($support_post_types as $post_type) {
+            $this->appliedPostType = static::getRecommendedPostType($post_type);
+            $postTypeObject = get_post_type_object( $this->appliedPostType);
+
+            $labels = get_post_type_labels($postTypeObject);
+
             add_meta_box(
                 'jankx_recommended_posts',
-                __('Bài viết đề xuất', 'jankx'),
+                'Gợi ý sản phẩm liên quan',
                 array($this, 'render_meta_box'),
                 $post_type,
                 'normal',
@@ -85,7 +92,7 @@ class RecommendedPosts
             <?php wp_nonce_field('jankx_recommended_posts', 'jankx_recommended_posts_nonce'); ?>
             <div class="jankx-recommended-posts-search">
                 <input type="text" id="jankx-post-search" placeholder="<?php esc_attr_e('Tìm kiếm bài viết...', 'jankx'); ?>">
-                <input type="hidden" id="jankx-post-type" value="<?php echo esc_attr($post->post_type); ?>">
+                <input type="hidden" id="jankx-post-type" value="<?php echo esc_attr($this->appliedPostType); ?>">
             </div>
 
             <div class="jankx-recommended-posts-results"></div>
@@ -221,9 +228,6 @@ class RecommendedPosts
     public function display_recommended_posts()
     {
         // Chỉ hiển thị ở trang chi tiết sản phẩm hoặc bài viết
-        if (!is_single() && !is_product()) {
-            return;
-        }
         $queried_object = get_queried_object();
         $post_id = $queried_object->ID;
 
@@ -232,6 +236,7 @@ class RecommendedPosts
         if (empty($saved_posts) || !is_array($saved_posts)) {
             return;
         }
+
         $postType = static::getRecommendedPostType($queried_object->post_type);
         $args = apply_filters("jankx/recommeded/{$postType}/query_args", [
             'post_type' => $postType,
