@@ -35,10 +35,10 @@ class RecommendedPosts
 
     public function add_meta_box()
     {
-        $support_post_types = apply_filters('jankx/editor_recommended_posts/post_types', $this->post_types);
+        $support_post_types = apply_filters('jankx/recommended/post_types', $this->post_types);
         foreach ($support_post_types as $post_type) {
             $this->appliedPostType = static::getRecommendedPostType($post_type);
-            $postTypeObject = get_post_type_object( $this->appliedPostType);
+            $postTypeObject = get_post_type_object($this->appliedPostType);
 
             $labels = get_post_type_labels($postTypeObject);
 
@@ -278,6 +278,12 @@ class RecommendedPosts
                 'layout' => $layout,
             ));
             $productsModule->setMainQuery($query);
+
+            // change container wrap tag
+            $layoutOptions['wrap_tag_name'] = 'ul';
+            $layoutOptions['wrap_classes'] = 'products columns-' . array_get($layoutOptions, 'columns', 4);
+
+
             $productsModule->setLayoutOptions($layoutOptions);
         }
 
