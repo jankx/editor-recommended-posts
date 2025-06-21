@@ -25,12 +25,16 @@ class RecommendedPosts
         add_action('admin_enqueue_scripts', array($this, 'enqueue_admin_scripts'));
         add_action('save_post', array($this, 'save_meta_box_data'));
         add_action('wp_ajax_get_recommended_posts', array($this, 'get_recommended_posts'));
+        add_action('wp_ajax_nopriv_get_recommended_posts', array($this, 'get_recommended_posts'));
 
         // Hiển thị bài viết đề xuất ở trang chi tiết
         $renderHook = Helper::getOption('recommended_render_hook', 'jankx/template/main_content_sidebar/end');
         $renderPriority = Helper::getOption('recommended_render_priority', 50);
 
         add_action($renderHook, array($this, 'display_recommended_posts'), $renderPriority);
+
+        // Khởi tạo Options class
+        new Options();
     }
 
     public function add_meta_box()
@@ -56,7 +60,7 @@ class RecommendedPosts
     public function enqueue_admin_scripts($hook)
     {
         global $post_type;
-        if (!in_array($post_type, $this->post_types)) {
+        if (!in_array($post_type, $this->post_types) && $hook !== 'settings_page_jankx-recommended-posts-settings') {
             return;
         }
 
@@ -87,6 +91,10 @@ class RecommendedPosts
         if (!is_array($saved_posts)) {
             $saved_posts = array();
         }
+
+        // Lấy global suggestions cho post type này
+        $global_suggestions = Options::getGlobalSuggestions($this->appliedPostType);
+
         ?>
         <div class="jankx-recommended-posts-container">
             <?php wp_nonce_field('jankx_recommended_posts', 'jankx_recommended_posts_nonce'); ?>
@@ -133,6 +141,42 @@ class RecommendedPosts
                     ?>
                 </div>
             </div>
+
+            <?php if (!empty($global_suggestions)) : ?>
+            <div class="jankx-global-suggestions-preview">
+                <h3><?php esc_html_e('Gợi ý toàn cục', 'jankx'); ?></h3>
+                <p><?php esc_html_e('Những bài viết sau đây được cấu hình làm gợi ý toàn cục cho loại bài viết này:', 'jankx'); ?></p>
+                <div class="jankx-global-suggestions-list">
+                    <?php
+                    foreach ($global_suggestions as $post_id) {
+                        $post_obj = get_post($post_id);
+                        if (!$post_obj) continue;
+
+                        $thumbnail = get_the_post_thumbnail_url($post_id, 'thumbnail');
+                        $price = '';
+                        if ($post_obj->post_type === 'product') {
+                            $product = wc_get_product($post_id);
+                            if ($product) {
+                                $price = $product->get_price_html();
+                            }
+                        }
+                        ?>
+                        <div class="jankx-global-suggestion-item">
+                            <?php if ($thumbnail) : ?>
+                                <img src="<?php echo esc_url($thumbnail); ?>" alt="<?php echo esc_attr($post_obj->post_title); ?>">
+                            <?php endif; ?>
+                            <h4><?php echo esc_html($post_obj->post_title); ?></h4>
+                            <?php if ($price) : ?>
+                                <div class="price"><?php echo $price; ?></div>
+                            <?php endif; ?>
+                        </div>
+                        <?php
+                    }
+                    ?>
+                </div>
+            </div>
+            <?php endif; ?>
+
             <input type="hidden" name="jankx_recommended_posts" id="jankx_recommended_posts" value="<?php echo esc_attr(json_encode($saved_posts)); ?>">
         </div>
         <?php
@@ -182,7 +226,8 @@ class RecommendedPosts
     {
         check_ajax_referer('jankx_recommended_posts_nonce', 'nonce');
 
-        if (!current_user_can('edit_posts')) {
+        // Kiểm tra quyền - cho phép cả admin và user có quyền edit_posts
+        if (!current_user_can('edit_posts') && !current_user_can('manage_options')) {
             wp_send_json_error('Unauthorized');
         }
 
@@ -195,8 +240,12 @@ class RecommendedPosts
             'post_status' => 'publish',
             'posts_per_page' => 10,
             's' => $search,
-            'post__not_in' => array($current_post_id),
         );
+
+        // Chỉ loại trừ current_post_id nếu nó khác 0
+        if ($current_post_id > 0) {
+            $args['post__not_in'] = array($current_post_id);
+        }
 
         $query = new \WP_Query($args);
         $posts = array();
@@ -230,14 +279,18 @@ class RecommendedPosts
         // Chỉ hiển thị ở trang chi tiết sản phẩm hoặc bài viết
         $queried_object = get_queried_object();
         $post_id = $queried_object->ID;
+        $postType = static::getRecommendedPostType($queried_object->post_type);
 
         $saved_posts = get_post_meta($post_id, $this->meta_key, true);
+        if (empty($saved_posts)) {
+            $saved_posts = Options::getGlobalSuggestions($postType);
+        }
 
+        // empty data
         if (empty($saved_posts) || !is_array($saved_posts)) {
             return;
         }
 
-        $postType = static::getRecommendedPostType($queried_object->post_type);
         $args = apply_filters("jankx/recommeded/{$postType}/query_args", [
             'post_type' => $postType,
             'post_status' => 'publish',
